@@ -48,6 +48,15 @@ with st.sidebar:
     )
     
     st.divider()
+    st.header("📊 Analysis Method")
+    analysis_method = st.radio(
+        "Select analysis method(s)",
+        options=["Both WoW & Z-Score", "WoW Method Only", "Z-Score Method Only"],
+        index=0,
+        help="Choose which analysis methods to run"
+    )
+    
+    st.divider()
     st.header("🎛️ Custom Thresholds")
     st.markdown("Leave blank for automatic detection")
     
@@ -190,35 +199,47 @@ if 'processed_csv' in st.session_state:
                     custom_baseline_window=int(baseline_window) if baseline_window else None
                 )
                 
-                # Display results
+                # Display results based on selected method
                 st.success("✅ Analysis Complete!")
                 
                 # Show the main visualization
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Display summary statistics
+                # Display summary statistics based on method selection
                 st.header("📊 Summary Statistics")
-                col1, col2 = st.columns(2)
                 
-                with col1:
+                if analysis_method == "Both WoW & Z-Score":
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.subheader("WoW Method")
+                        wow_counts = df_wow['classification'].value_counts()
+                        st.bar_chart(wow_counts)
+                    with col2:
+                        st.subheader("Z-Score Method")
+                        zscore_counts = df_zscore['classification'].value_counts()
+                        st.bar_chart(zscore_counts)
+                elif analysis_method == "WoW Method Only":
                     st.subheader("WoW Method")
                     wow_counts = df_wow['classification'].value_counts()
                     st.bar_chart(wow_counts)
-                
-                with col2:
+                else:  # Z-Score Method Only
                     st.subheader("Z-Score Method")
                     zscore_counts = df_zscore['classification'].value_counts()
                     st.bar_chart(zscore_counts)
                 
                 # Display data tables
-                with st.expander("📋 WoW Results Table"):
-                    st.dataframe(df_wow, use_container_width=True)
+                st.header("📋 Detailed Results")
                 
-                with st.expander("📋 Z-Score Results Table"):
-                    st.dataframe(df_zscore, use_container_width=True)
+                if analysis_method in ["Both WoW & Z-Score", "WoW Method Only"]:
+                    with st.expander("📊 WoW Results Table"):
+                        st.dataframe(df_wow, use_container_width=True)
                 
-                # Display disagreements
-                if len(differences) > 0:
+                if analysis_method in ["Both WoW & Z-Score", "Z-Score Method Only"]:
+                    with st.expander("📈 Z-Score Results Table"):
+                        st.dataframe(df_zscore, use_container_width=True)
+                
+                # Display disagreements only if both methods selected
+                if analysis_method == "Both WoW & Z-Score" and len(differences) > 0:
                     with st.expander(f"🔍 Disagreements ({len(differences)} weeks)"):
                         st.dataframe(differences, use_container_width=True)
                 
