@@ -6,11 +6,160 @@ Converts the notebook analysis into an interactive web interface
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import sys
 
 # Import your existing analysis functions
 sys.path.append('.')
 from scripts import main
+
+def create_wow_only_chart(df_wow):
+    """Create 2-panel WoW-only visualization"""
+    color_map = {
+        'Baseline Building': '#CCCCCC',
+        'In-Line': '#2E86AB',
+        'Slightly Above': '#A23B72',
+        'Slightly Below': '#F18F01',
+        'Meaningfully Above': '#06FFA5',
+        'Meaningfully Below': '#FF4444'
+    }
+    
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=('WoW Method - Script Trend', 'WoW Classification Timeline'),
+        vertical_spacing=0.15,
+        row_heights=[0.6, 0.4]
+    )
+    
+    all_classifications = set(df_wow['classification'].unique())
+    legend_added = set()
+    
+    # Panel 1: WoW Script Trend
+    for classification in all_classifications:
+        df_subset = df_wow[df_wow['classification'] == classification]
+        for _, row in df_subset.iterrows():
+            symbol = 'diamond' if row['is_holiday_week'] else 'circle'
+            size = 12 if row['is_holiday_week'] else 8
+            showlegend = classification not in legend_added
+            if showlegend:
+                legend_added.add(classification)
+            
+            fig.add_trace(
+                go.Scatter(x=[row['date']], y=[row['scripts']],
+                    mode='markers', name=classification,
+                    marker=dict(color=color_map[classification], size=size, symbol=symbol,
+                    line=dict(color='red' if row['is_holiday_week'] else None, width=2 if row['is_holiday_week'] else 0)),
+                    showlegend=showlegend, legendgroup=classification,
+                    hovertemplate=f"<b>Week {row['week_number']}</b><br>Date: {row['date'].strftime('%Y-%m-%d')}<br>Scripts: {row['scripts']}<br>WoW %: {row['wow_pct']:.1f}%<br>Classification: {classification}<extra></extra>"),
+                row=1, col=1
+            )
+    
+    # Panel 2: WoW Timeline
+    classification_order = ['Meaningfully Below', 'Slightly Below', 'In-Line', 'Slightly Above', 'Meaningfully Above', 'Baseline Building']
+    classification_y = {c: i for i, c in enumerate(classification_order)}
+    
+    for classification in all_classifications:
+        df_subset = df_wow[df_wow['classification'] == classification]
+        for _, row in df_subset.iterrows():
+            fig.add_trace(
+                go.Scatter(x=[row['date']], y=[classification_y.get(classification, 0)],
+                    mode='markers', name=classification,
+                    marker=dict(color=color_map[classification], size=12 if row['is_holiday_week'] else 10, 
+                    symbol='diamond' if row['is_holiday_week'] else 'square',
+                    line=dict(color='red' if row['is_holiday_week'] else None, width=2 if row['is_holiday_week'] else 0)),
+                    showlegend=False, legendgroup=classification,
+                    hovertemplate=f"<b>Week {row['week_number']}</b><br>Date: {row['date'].strftime('%Y-%m-%d')}<br>WoW %: {row['wow_pct']:.1f}%<br>Classification: {classification}<extra></extra>"),
+                row=2, col=1
+            )
+    
+    # Add holiday lines
+    holiday_dates = df_wow[df_wow['is_holiday_week']]['date'].unique()
+    for holiday_date in holiday_dates:
+        fig.add_vline(x=holiday_date, line_dash="dash", line_color="red", opacity=0.3, row=1, col=1)
+        fig.add_vline(x=holiday_date, line_dash="dash", line_color="red", opacity=0.3, row=2, col=1)
+    
+    fig.update_layout(height=700, title_text="WoW Method Analysis", showlegend=True, hovermode='closest')
+    fig.update_xaxes(title_text="Date", row=1, col=1)
+    fig.update_xaxes(title_text="Date", row=2, col=1)
+    fig.update_yaxes(title_text="Weekly Scripts", row=1, col=1)
+    fig.update_yaxes(title_text="Classification", tickmode='array', tickvals=list(range(len(classification_order))),
+                    ticktext=classification_order, row=2, col=1)
+    
+    return fig
+
+def create_zscore_only_chart(df_zscore):
+    """Create 2-panel Z-Score-only visualization"""
+    color_map = {
+        'Baseline Building': '#CCCCCC',
+        'In-Line': '#2E86AB',
+        'Slightly Above': '#A23B72',
+        'Slightly Below': '#F18F01',
+        'Meaningfully Above': '#06FFA5',
+        'Meaningfully Below': '#FF4444'
+    }
+    
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=('Z-Score Method - Script Trend', 'Z-Score Classification Timeline'),
+        vertical_spacing=0.15,
+        row_heights=[0.6, 0.4]
+    )
+    
+    all_classifications = set(df_zscore['classification'].unique())
+    legend_added = set()
+    
+    # Panel 1: Z-Score Script Trend
+    for classification in all_classifications:
+        df_subset = df_zscore[df_zscore['classification'] == classification]
+        for _, row in df_subset.iterrows():
+            symbol = 'diamond' if row['is_holiday_week'] else 'circle'
+            size = 12 if row['is_holiday_week'] else 8
+            showlegend = classification not in legend_added
+            if showlegend:
+                legend_added.add(classification)
+            
+            fig.add_trace(
+                go.Scatter(x=[row['date']], y=[row['scripts']],
+                    mode='markers', name=classification,
+                    marker=dict(color=color_map[classification], size=size, symbol=symbol,
+                    line=dict(color='red' if row['is_holiday_week'] else None, width=2 if row['is_holiday_week'] else 0)),
+                    showlegend=showlegend, legendgroup=classification,
+                    hovertemplate=f"<b>Week {row['week_number']}</b><br>Date: {row['date'].strftime('%Y-%m-%d')}<br>Scripts: {row['scripts']}<br>Z-Score: {row['z_score']:.2f}<br>Classification: {classification}<extra></extra>"),
+                row=1, col=1
+            )
+    
+    # Panel 2: Z-Score Timeline
+    classification_order = ['Meaningfully Below', 'Slightly Below', 'In-Line', 'Slightly Above', 'Meaningfully Above', 'Baseline Building']
+    classification_y = {c: i for i, c in enumerate(classification_order)}
+    
+    for classification in all_classifications:
+        df_subset = df_zscore[df_zscore['classification'] == classification]
+        for _, row in df_subset.iterrows():
+            fig.add_trace(
+                go.Scatter(x=[row['date']], y=[classification_y.get(classification, 0)],
+                    mode='markers', name=classification,
+                    marker=dict(color=color_map[classification], size=12 if row['is_holiday_week'] else 10, 
+                    symbol='diamond' if row['is_holiday_week'] else 'square',
+                    line=dict(color='red' if row['is_holiday_week'] else None, width=2 if row['is_holiday_week'] else 0)),
+                    showlegend=False, legendgroup=classification,
+                    hovertemplate=f"<b>Week {row['week_number']}</b><br>Date: {row['date'].strftime('%Y-%m-%d')}<br>Z-Score: {row['z_score']:.2f}<br>Classification: {classification}<extra></extra>"),
+                row=2, col=1
+            )
+    
+    # Add holiday lines
+    holiday_dates = df_zscore[df_zscore['is_holiday_week']]['date'].unique()
+    for holiday_date in holiday_dates:
+        fig.add_vline(x=holiday_date, line_dash="dash", line_color="red", opacity=0.3, row=1, col=1)
+        fig.add_vline(x=holiday_date, line_dash="dash", line_color="red", opacity=0.3, row=2, col=1)
+    
+    fig.update_layout(height=700, title_text="Z-Score Method Analysis", showlegend=True, hovermode='closest')
+    fig.update_xaxes(title_text="Date", row=1, col=1)
+    fig.update_xaxes(title_text="Date", row=2, col=1)
+    fig.update_yaxes(title_text="Weekly Scripts", row=1, col=1)
+    fig.update_yaxes(title_text="Classification", tickmode='array', tickvals=list(range(len(classification_order))),
+                    ticktext=classification_order, row=2, col=1)
+    
+    return fig
 
 # Page configuration
 st.set_page_config(
@@ -202,8 +351,18 @@ if 'processed_csv' in st.session_state:
                 # Display results based on selected method
                 st.success("✅ Analysis Complete!")
                 
-                # Show the main visualization
-                st.plotly_chart(fig, use_container_width=True)
+                # Show the appropriate visualization based on method selection
+                if analysis_method == "Both WoW & Z-Score":
+                    # Use the 4-panel comparison chart from main()
+                    st.plotly_chart(fig, use_container_width=True)
+                elif analysis_method == "WoW Method Only":
+                    # Create and show WoW-only chart
+                    wow_fig = create_wow_only_chart(df_wow)
+                    st.plotly_chart(wow_fig, use_container_width=True)
+                else:  # Z-Score Method Only
+                    # Create and show Z-Score-only chart
+                    zscore_fig = create_zscore_only_chart(df_zscore)
+                    st.plotly_chart(zscore_fig, use_container_width=True)
                 
                 # Display summary statistics based on method selection
                 st.header("📊 Summary Statistics")
