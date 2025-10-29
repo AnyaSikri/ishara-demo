@@ -51,6 +51,17 @@ with st.sidebar:
     st.header("🎛️ Custom Thresholds")
     st.markdown("Leave blank for automatic detection")
     
+    # WoW thresholds
+    st.subheader("WoW Method")
+    wow_inline = st.number_input(
+        "WoW In-Line Threshold (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=None,
+        step=1.0,
+        help="Percentage change threshold for in-line classification"
+    )
+    
     wow_slight = st.number_input(
         "WoW Slight Threshold (%)",
         min_value=0.0,
@@ -69,6 +80,17 @@ with st.sidebar:
         help="Percentage change threshold for meaningful changes"
     )
     
+    st.divider()
+    st.subheader("Z-Score Method")
+    zscore_slight = st.number_input(
+        "Z-Score Slight Threshold",
+        min_value=0.0,
+        max_value=5.0,
+        value=None,
+        step=0.1,
+        help="Z-score threshold for slight changes (e.g., 1.0 = 1 standard deviation)"
+    )
+    
     zscore_meaningful = st.number_input(
         "Z-Score Meaningful Threshold",
         min_value=0.0,
@@ -76,6 +98,16 @@ with st.sidebar:
         value=None,
         step=0.1,
         help="Z-score threshold for meaningful changes (e.g., 2.0 = 2 standard deviations)"
+    )
+    
+    st.divider()
+    baseline_window = st.number_input(
+        "Baseline Window (weeks)",
+        min_value=1,
+        max_value=52,
+        value=None,
+        step=1,
+        help="Number of weeks to use for baseline calculation"
     )
 
 # Main content area
@@ -101,9 +133,20 @@ if uploaded_file is not None:
                 # Process data
                 if st.button("✅ Process Data", type="primary"):
                     df_processed = pd.DataFrame()
-                    df_processed['date'] = pd.to_datetime(df_excel[date_col])
+                    df_processed['date'] = pd.to_datetime(df_excel[date_col], errors='coerce')
                     df_processed['scripts'] = pd.to_numeric(df_excel[value_col], errors='coerce')
+                    
+                    # Filter out summary rows (Grand Total, Total, etc.)
+                    # Remove rows where date is invalid or scripts is NaN
                     df_processed = df_processed.dropna()
+                    
+                    # Additional filter: remove rows where date column contains text like "Grand Total", "Total", etc.
+                    # Check the original date column for these patterns
+                    if date_col in df_excel.columns:
+                        summary_keywords = ['total', 'grand', 'summary', 'subtotal']
+                        mask = df_excel[date_col].astype(str).str.lower().str.contains('|'.join(summary_keywords), na=False)
+                        # Invert mask to keep rows NOT containing keywords
+                        df_processed = df_processed[~mask]
                     
                     # Save to temporary CSV
                     csv_path = "temp_data.csv"
@@ -139,9 +182,12 @@ if 'processed_csv' in st.session_state:
                 # Run the analysis
                 fig, df_wow, df_zscore, differences = main(
                     filepath=st.session_state['processed_csv'],
+                    custom_wow_inline=wow_inline if wow_inline else None,
                     custom_wow_slight=wow_slight if wow_slight else None,
                     custom_wow_meaningful=wow_meaningful if wow_meaningful else None,
-                    custom_zscore_meaningful=zscore_meaningful if zscore_meaningful else None
+                    custom_zscore_slight=zscore_slight if zscore_slight else None,
+                    custom_zscore_meaningful=zscore_meaningful if zscore_meaningful else None,
+                    custom_baseline_window=int(baseline_window) if baseline_window else None
                 )
                 
                 # Display results
