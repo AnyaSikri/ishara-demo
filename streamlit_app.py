@@ -1,7 +1,4 @@
-"""
-Streamlit Web App for Drug Script Analysis
-Converts the notebook analysis into an interactive web interface
-"""
+"""Drug Script Analysis Tool - Streamlit Application"""
 
 import streamlit as st
 import pandas as pd
@@ -12,16 +9,10 @@ from datetime import timedelta
 from scipy import stats
 import sys
 
-# Import your existing analysis functions
 sys.path.append('.')
 from scripts import main, load_data, flag_holiday_weeks, classify_drug_maturity, classify_wow_method, classify_zscore_method
 
-# ============================================================================
-# DATAFRAME DISPLAY HELPER (avoids pyarrow dependency issues)
-# ============================================================================
-
 def display_dataframe(df, max_rows=100):
-    """Display dataframe as HTML table to avoid pyarrow issues."""
     if len(df) > max_rows:
         df_display = df.head(max_rows)
         st.caption(f"Showing first {max_rows} of {len(df)} rows")
@@ -58,12 +49,7 @@ def display_dataframe(df, max_rows=100):
     """
     st.markdown(styled_html, unsafe_allow_html=True)
 
-# ============================================================================
-# EXISTING HELPER FUNCTIONS (DO NOT MODIFY)
-# ============================================================================
-
 def create_wow_only_chart(df_wow):
-    """Create 2-panel WoW-only visualization"""
     color_map = {
         'Baseline Building': '#CCCCCC',
         'In-Line': '#2E86AB',
@@ -210,9 +196,7 @@ def create_zscore_only_chart(df_zscore):
     
     return fig
 
-# ============================================================================
 # NEW: TRx-STOCK PERFORMANCE ANALYSIS FUNCTIONS
-# ============================================================================
 
 def calculate_trx_category(df_trx, method='zscore'):
     """
@@ -1249,9 +1233,7 @@ def load_stock_data(file, file_type='bloomberg'):
     return df_data
 
 
-# ============================================================================
 # PAGE CONFIGURATION
-# ============================================================================
 
 st.set_page_config(
     page_title="Drug Script Analysis Tool",
@@ -1259,24 +1241,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# Title
-st.title("💊 Drug Script Analysis Tool")
+st.title("Drug Script Analysis Tool")
 
-# ============================================================================
-# TABS
-# ============================================================================
-
-tab1, tab2 = st.tabs(["📊 Drug Script Analysis", "📈 TRx-Stock Performance Analysis"])
-
-# ============================================================================
-# TAB 1: EXISTING DRUG SCRIPT ANALYSIS (UNCHANGED)
-# ============================================================================
+tab1, tab2 = st.tabs(["Drug Script Analysis", "TRx-Stock Performance Analysis"])
 
 with tab1:
-    st.markdown("""
-    Analyze prescription data using WoW and Z-Score methods.
-    Upload an Excel file or CSV to get started.
-    """)
     
     # Analysis mode selector
     tab1_mode = st.radio(
@@ -1290,7 +1259,7 @@ with tab1:
     
     # Sidebar for Tab 1 settings
     with st.sidebar:
-        st.header("⚙️ Tab 1 Settings")
+        st.header("Tab 1 Settings")
         
         # File upload
         uploaded_file = st.file_uploader(
@@ -1301,7 +1270,7 @@ with tab1:
         )
         
         st.divider()
-        st.header("📊 Analysis Method")
+        st.header("Analysis Method")
         analysis_method = st.radio(
             "Select analysis method(s)",
             options=["Both WoW & Z-Score", "WoW Method Only", "Z-Score Method Only"],
@@ -1310,7 +1279,7 @@ with tab1:
         )
         
         st.divider()
-        st.header("🎛️ Custom Thresholds")
+        st.header("Custom Thresholds")
         st.markdown("Leave blank for automatic detection")
         
         # WoW thresholds
@@ -1382,7 +1351,7 @@ with tab1:
                     df_excel = pd.read_excel(uploaded_file)
                     
                     # Show available columns
-                    st.info("📊 Available columns in your Excel file:")
+                    st.info("Available columns in your Excel file:")
                     st.write(df_excel.columns.tolist())
                     
                     if tab1_mode == "Single Drug Analysis":
@@ -1394,7 +1363,7 @@ with tab1:
                             value_col = st.selectbox("Select Value Column", df_excel.columns)
                         
                         # Process data
-                        if st.button("✅ Process Data", type="primary", key="tab1_process"):
+                        if st.button("Process Data", type="primary", key="tab1_process"):
                             df_processed = pd.DataFrame()
                             df_processed['date'] = pd.to_datetime(df_excel[date_col], errors='coerce')
                             df_processed['scripts'] = pd.to_numeric(df_excel[value_col], errors='coerce')
@@ -1410,7 +1379,7 @@ with tab1:
                             csv_path = "temp_data.csv"
                             df_processed.to_csv(csv_path, index=False)
                             
-                            st.success(f"✅ Processed {len(df_processed)} weeks of data")
+                            st.success(f"Processed {len(df_processed)} weeks of data")
                             st.session_state['processed_csv'] = csv_path
                     
                     else:
@@ -1433,7 +1402,7 @@ with tab1:
                             horizontal=True
                         )
                         
-                        if st.button("📊 Generate Multi-Drug Chart", type="primary", key="tab1_multi"):
+                        if st.button("Generate Multi-Drug Chart", type="primary", key="tab1_multi"):
                             if len(selected_cols) == 0:
                                 st.error("Please select at least one column")
                             else:
@@ -1455,7 +1424,7 @@ with tab1:
                                 
                                 st.session_state['multi_drugs_data'] = multi_drugs_data
                                 st.session_state['multi_metric'] = metric_type
-                                st.success(f"✅ Loaded {len(multi_drugs_data)} drugs for comparison")
+                                st.success(f"Loaded {len(multi_drugs_data)} drugs for comparison")
                                 
                                 # Display the chart immediately
                                 fig = create_multi_drug_chart(multi_drugs_data, list(multi_drugs_data.keys()), metric_type)
@@ -1470,20 +1439,20 @@ with tab1:
                         st.session_state['processed_csv'] = csv_path
                         
                         df_preview = pd.read_csv(csv_path)
-                        st.success("✅ CSV file loaded")
+                        st.success("CSV file loaded")
                         display_dataframe(df_preview.head())
                     else:
                         st.warning("Multi-drug mode requires an Excel file with multiple columns. Please upload an Excel (.xlsx) file.")
                     
             except Exception as e:
-                st.error(f"❌ Error processing file: {str(e)}")
+                st.error(f"Error processing file: {str(e)}")
                 st.stop()
     
     # Run analysis button (single drug mode only)
     if 'processed_csv' in st.session_state and tab1_mode == "Single Drug Analysis":
         st.divider()
         
-        if st.button("🚀 Run Analysis", type="primary", use_container_width=True, key="tab1_run"):
+        if st.button("Run Analysis", type="primary", use_container_width=True, key="tab1_run"):
             with st.spinner("Running analysis... This may take a moment."):
                 try:
                     # Run the analysis
@@ -1498,7 +1467,7 @@ with tab1:
                     )
                     
                     # Display results based on selected method
-                    st.success("✅ Analysis Complete!")
+                    st.success("Analysis Complete!")
                     
                     # Show the appropriate visualization based on method selection
                     if analysis_method == "Both WoW & Z-Score":
@@ -1511,7 +1480,7 @@ with tab1:
                         st.plotly_chart(zscore_fig, use_container_width=True)
                     
                     # Display summary statistics
-                    st.header("📊 Summary Statistics")
+                    st.header("Summary Statistics")
                     
                     if analysis_method == "Both WoW & Z-Score":
                         col1, col2 = st.columns(2)
@@ -1541,48 +1510,32 @@ with tab1:
                         st.plotly_chart(fig_zscore, use_container_width=True)
                     
                     # Display data tables
-                    st.header("📋 Detailed Results")
+                    st.header("Detailed Results")
                     
                     if analysis_method in ["Both WoW & Z-Score", "WoW Method Only"]:
-                        with st.expander("📊 WoW Results Table"):
+                        with st.expander("WoW Results Table"):
                             display_dataframe(df_wow)
                     
                     if analysis_method in ["Both WoW & Z-Score", "Z-Score Method Only"]:
-                        with st.expander("📈 Z-Score Results Table"):
+                        with st.expander("Z-Score Results Table"):
                             display_dataframe(df_zscore)
                     
                     if analysis_method == "Both WoW & Z-Score" and len(differences) > 0:
-                        with st.expander(f"🔍 Disagreements ({len(differences)} weeks)"):
+                        with st.expander(f"Disagreements ({len(differences)} weeks)"):
                             display_dataframe(differences)
                     
                 except Exception as e:
-                    st.error(f"❌ Error running analysis: {str(e)}")
+                    st.error(f"Error running analysis: {str(e)}")
                     st.exception(e)
     
     else:
-        st.info("👆 Please upload a file in the sidebar to begin")
+        st.info("Please upload a file in the sidebar to begin")
 
 
-# ============================================================================
 # TAB 2: TRx-STOCK PERFORMANCE ANALYSIS (NEW)
-# ============================================================================
 
 with tab2:
-    st.markdown("""
-    ### Analyze TRx Performance Categories vs. Stock Returns
-    
-    **Analysis Logic:**
-    1. **TRx Performance Date:** Week ending date (e.g., 10/10/2024)
-    2. **Data Release Date:** 7 days after TRx week end (e.g., 10/17/2024)
-    3. **Stock Performance Window:** Release date → 7 days forward (e.g., 10/17 → 10/24)
-    
-    Does knowing a drug's TRx category help predict the following week's stock movement?
-    """)
-    
-    st.divider()
-    
-    # Drug-to-Ticker mapping (user can customize)
-    st.subheader("📋 Step 1: Configure Drug-Stock Mapping")
+    st.subheader("Step 1: Configure Drug-Stock Mapping")
     
     default_mappings = {
         'NEFFY': 'SPRY',
@@ -1593,8 +1546,7 @@ with tab2:
         'ZORYVE': 'ARQT'
     }
     
-    with st.expander("🔧 Drug-to-Stock Ticker Mapping", expanded=True):
-        st.markdown("Edit the ticker symbols for each drug:")
+    with st.expander("Drug-to-Stock Ticker Mapping", expanded=True):
         
         col1, col2, col3 = st.columns(3)
         drug_ticker_map = {}
@@ -1612,7 +1564,7 @@ with tab2:
     st.divider()
     
     # File uploads
-    st.subheader("📁 Step 2: Upload Data Files")
+    st.subheader("Step 2: Upload Data Files")
     
     col1, col2 = st.columns(2)
     
@@ -1643,7 +1595,7 @@ with tab2:
     st.divider()
     
     # Analysis settings
-    st.subheader("⚙️ Step 3: Analysis Settings")
+    st.subheader("Step 3: Analysis Settings")
     
     col1, col2, col3 = st.columns(3)
     
@@ -1676,22 +1628,22 @@ with tab2:
     st.divider()
     
     # Run Analysis
-    if st.button("🚀 Run TRx-Stock Analysis", type="primary", use_container_width=True, key="tab2_run"):
+    if st.button("Run TRx-Stock Analysis", type="primary", use_container_width=True, key="tab2_run"):
         
         if trx_file is None:
-            st.error("❌ Please upload a TRx data file")
+            st.error("Please upload a TRx data file")
         elif stock_file is None:
-            st.error("❌ Please upload a stock price data file")
+            st.error("Please upload a stock price data file")
         else:
             with st.spinner("Analyzing TRx-Stock relationship..."):
                 try:
                     # Load TRx data
                     drugs_data = load_ishara_rapid_data(trx_file)
-                    st.success(f"✅ Loaded TRx data for {len(drugs_data)} drugs: {list(drugs_data.keys())}")
+                    st.success(f"Loaded TRx data for {len(drugs_data)} drugs: {list(drugs_data.keys())}")
                     
                     # Load stock data
                     stock_data = load_stock_data(stock_file, file_type='bloomberg')
-                    st.success(f"✅ Loaded {len(stock_data)} stock price records for {stock_ticker_input}")
+                    st.success(f"Loaded {len(stock_data)} stock price records for {stock_ticker_input}")
                     
                     # Store stock data by ticker
                     stock_by_ticker = {stock_ticker_input: stock_data}
@@ -1772,12 +1724,12 @@ with tab2:
                                 lag_data.append(lag_entry)
                     
                     if len(analysis_results) == 0:
-                        st.warning("⚠️ No matching data found. Make sure the stock ticker matches your drug-ticker mapping.")
+                        st.warning("No matching data found. Make sure the stock ticker matches your drug-ticker mapping.")
                     else:
-                        st.success(f"✅ Generated {len(analysis_results)} data points for analysis")
+                        st.success(f"Generated {len(analysis_results)} data points for analysis")
                         
                         # Drug selection for visualization
-                        st.subheader("📊 Results")
+                        st.subheader("Results")
                         
                         available_drugs = list(set(r['drug'] for r in analysis_results))
                         
@@ -1801,14 +1753,11 @@ with tab2:
                         if len(selected_drugs) > 0:
                             
                             if viz_type == "Category Scatter":
-                                st.markdown("**X-axis: Z-Score (how unusual prescriptions were) | Y-axis: Stock return after data release**")
                                 fig = create_trx_stock_scatter(analysis_results, selected_drugs, lag_data)
                                 st.plotly_chart(fig, use_container_width=True)
                                 
-                                # Add the prescription & stock price line chart below
                                 st.divider()
-                                st.markdown("### 📈 Prescriptions & Stock Price Over Time")
-                                st.markdown("**Compare prescription trends with stock price movement**")
+                                st.markdown("### Prescriptions & Stock Price Over Time")
                                 
                                 # Build prescription data from analysis_results
                                 prescription_data = []
@@ -1827,56 +1776,37 @@ with tab2:
                                     st.info("No prescription data available for line chart")
                             
                             elif viz_type == "Time-Colored Scatter":
-                                st.markdown("**Points colored by date: 🟣 Dark = Recent, 🟡 Light = Older**")
                                 fig = create_scatter_with_time_color(analysis_results, selected_drugs)
                                 st.plotly_chart(fig, use_container_width=True)
                             
                             elif viz_type == "Time Series":
-                                st.markdown("**Top: TRx Z-Score over time | Bottom: Stock returns over time**")
                                 if len(lag_data) > 0:
                                     fig = create_time_series_comparison(analysis_results, lag_data, stock_data, selected_drugs)
                                     st.plotly_chart(fig, use_container_width=True)
                                 else:
-                                    st.warning("⚠️ Use Z-Score classification method to see time series.")
+                                    st.warning("Use Z-Score classification method to see time series.")
                             
                             elif viz_type == "Lag Analysis":
-                                st.markdown("""
-                                **8 panels showing correlation at different time horizons**
-                                - Each panel = different lag period (1-8 weeks)
-                                - Diagonal pattern = predictive relationship
-                                - Green r = positive correlation, Red r = negative
-                                """)
                                 if len(lag_data) > 0:
                                     lag_fig = create_lag_analysis_dashboard(lag_data, selected_drugs)
                                     st.plotly_chart(lag_fig, use_container_width=True)
                                 else:
-                                    st.warning("⚠️ Use Z-Score classification method for lag analysis.")
+                                    st.warning("Use Z-Score classification method for lag analysis.")
                             
                             # Data tables in expanders
                             st.divider()
                             df_results = pd.DataFrame(analysis_results)
                             df_selected = df_results[df_results['drug'].isin(selected_drugs)]
                             
-                            with st.expander("📋 Full Results Table"):
+                            with st.expander("Full Results Table"):
                                 df_display = df_selected[['drug', 'ticker', 'trx_date', 'category', 'scripts', 'stock_return']].copy()
                                 df_display['trx_date'] = df_display['trx_date'].dt.strftime('%Y-%m-%d')
                                 df_display['stock_return'] = df_display['stock_return'].round(2)
                                 display_dataframe(df_display)
                         else:
-                            st.info("👆 Select at least one drug to display the chart")
+                            st.info("Select at least one drug to display the chart")
                     
                 except Exception as e:
-                    st.error(f"❌ Error during analysis: {str(e)}")
+                    st.error(f"Error during analysis: {str(e)}")
                     st.exception(e)
 
-# ============================================================================
-# FOOTER
-# ============================================================================
-
-st.divider()
-st.markdown("""
----
-**About:** This tool provides two analysis views:
-- **Tab 1:** Individual drug script analysis using WoW and Z-Score methods
-- **Tab 2:** Cross-drug TRx-Stock performance correlation analysis
-""")
